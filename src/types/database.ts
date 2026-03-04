@@ -61,6 +61,14 @@ export interface CrmContact {
   updated_at: string
 }
 
+export interface CrmFunnel {
+  id: string
+  name: string
+  slug: string
+  position: number
+  created_at: string
+}
+
 export interface CrmPipelineStage {
   id: string
   name: string
@@ -68,6 +76,17 @@ export interface CrmPipelineStage {
   color: string | null
   is_won: boolean
   is_lost: boolean
+  funnel_id: string | null
+  created_at: string
+}
+
+export interface CrmEmailSequence {
+  id: string
+  deal_id: string
+  email_index: number
+  next_send_at: string | null
+  last_sent_at: string | null
+  active: boolean
   created_at: string
 }
 
@@ -75,6 +94,7 @@ export interface CrmDeal {
   id: string
   title: string
   stage_id: string
+  funnel_id: string | null
   company_id: string | null
   contact_id: string
   owner_id: string | null
@@ -88,6 +108,11 @@ export interface CrmDeal {
   position: number
   budget_range: string | null
   urgency: string | null
+  tags: string[]
+  estimated_value: number | null
+  first_interaction_at: string | null
+  whatsapp_outreach_at: string | null
+  ai_disabled_at: string | null
   stage_entered_at: string
   won_at: string | null
   lost_at: string | null
@@ -125,13 +150,40 @@ export interface CrmTask {
   updated_at: string
 }
 
+export interface CrmDealItem {
+  id: string
+  deal_id: string
+  product_id: string
+  product_name: string
+  quantity: number
+  unit_price: number
+  created_at: string
+}
+
+export interface ChatConversation {
+  id: string
+  session_id: string
+  lead_data: Record<string, unknown> | null
+  contact_id: string | null
+  deal_id: string | null
+  messages: Array<{ role: string; content: string; timestamp?: string }>
+  message_count: number
+  tags: string[]
+  ai_summary: string | null
+  products_discussed: string[]
+  cta_triggered: boolean
+  created_at: string
+  updated_at: string
+}
+
 // Tipos com relações (para queries com joins)
 export interface CrmDealWithRelations extends CrmDeal {
   stage?: CrmPipelineStage
+  funnel?: CrmFunnel | null
   company?: CrmCompany | null
   contact?: CrmContact
   owner?: CrmUserProfile | null
-  next_task?: CrmTask | null
+  next_task?: CrmTask[] | null
 }
 
 export interface CrmContactWithCompany extends CrmContact {
@@ -155,10 +207,14 @@ export interface Database {
       crm_user_profiles: { Row: CrmUserProfile; Insert: Partial<CrmUserProfile> & Pick<CrmUserProfile, 'id' | 'email' | 'display_name'>; Update: Partial<CrmUserProfile> }
       crm_companies: { Row: CrmCompany; Insert: Partial<CrmCompany> & Pick<CrmCompany, 'name'>; Update: Partial<CrmCompany> }
       crm_contacts: { Row: CrmContact; Insert: Partial<CrmContact> & Pick<CrmContact, 'name'>; Update: Partial<CrmContact> }
+      crm_funnels: { Row: CrmFunnel; Insert: Partial<CrmFunnel> & Pick<CrmFunnel, 'name' | 'slug'>; Update: Partial<CrmFunnel> }
       crm_pipeline_stages: { Row: CrmPipelineStage; Insert: Partial<CrmPipelineStage> & Pick<CrmPipelineStage, 'name' | 'position'>; Update: Partial<CrmPipelineStage> }
       crm_deals: { Row: CrmDeal; Insert: Partial<CrmDeal> & Pick<CrmDeal, 'title' | 'stage_id' | 'contact_id'>; Update: Partial<CrmDeal> }
       crm_activities: { Row: CrmActivity; Insert: Partial<CrmActivity> & Pick<CrmActivity, 'type'>; Update: Partial<CrmActivity> }
       crm_tasks: { Row: CrmTask; Insert: Partial<CrmTask> & Pick<CrmTask, 'title' | 'type'>; Update: Partial<CrmTask> }
+      crm_deal_items: { Row: CrmDealItem; Insert: Partial<CrmDealItem> & Pick<CrmDealItem, 'deal_id' | 'product_id' | 'product_name' | 'quantity'>; Update: Partial<CrmDealItem> }
+      crm_email_sequences: { Row: CrmEmailSequence; Insert: Partial<CrmEmailSequence> & Pick<CrmEmailSequence, 'deal_id'>; Update: Partial<CrmEmailSequence> }
+      chat_conversations: { Row: ChatConversation; Insert: Partial<ChatConversation> & Pick<ChatConversation, 'session_id'>; Update: Partial<ChatConversation> }
     }
   }
 }
