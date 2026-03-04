@@ -1,40 +1,87 @@
 import { NextResponse } from 'next/server'
-import { contacts, companies, deals, activities } from '@/lib/data'
+import { db } from '@/lib/db'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const contact = contacts.find((c) => c.id === id)
-  if (!contact) return NextResponse.json({ error: 'Contato não encontrado' }, { status: 404 })
+  try {
+    const { id } = await params
+    const supabase = db()
 
-  const company = companies.find((c) => c.id === contact.company_id) ?? null
-  const contactDeals = deals.filter((d) => d.contact_id === id)
-  const contactActivities = activities
-    .filter((a) => a.contact_id === id)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    const { data: contact, error } = await supabase
+      .from('crm_contacts')
+      .select('*, company:crm_companies(*)')
+      .eq('id', id)
+      .single()
 
-  return NextResponse.json({
-    ...contact,
-    company,
-    deals: contactDeals,
-    activities: contactActivities,
-  })
+    if (error || !contact) {
+      return NextResponse.json({ error: 'Contato não encontrado' }, { status: 404 })
+    }
+
+    // Fetch related data in parallel
+    const [dealsRes, activitiesRes] = await Promise.all([
+      supabase
+        .from('crm_deals')
+        .select('*')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('crm_activities')
+        .select('*, user:crm_user_profiles(*)')
+        .eq('contact_id', id)
+        .order('created_at', { ascending: false }),
+    ])
+
+    return NextResponse.json({
+      ...contact,
+      deals: dealsRes.data ?? [],
+      activities: activitiesRes.data ?? [],
+    })
+  } catch (err) {
+    console.error('Erro inesperado em GET /api/contacts/[id]:', err)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const idx = contacts.findIndex((c) => c.id === id)
-  if (idx === -1) return NextResponse.json({ error: 'Contato não encontrado' }, { status: 404 })
+  try {
+    const { id } = await params
+    const body = await request.json()
 
-  const body = await request.json()
-  contacts[idx] = { ...contacts[idx], ...body, updated_at: new Date().toISOString() }
-  return NextResponse.json(contacts[idx])
+    const { data, error } = await db()
+      .from('crm_contacts')
+      .update({ ...body, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar contato:', error)
+      return NextResponse.json({ error: 'Contato não encontrado' }, { status: 404 })
+    }
+
+    return NextResponse.json(data)
+  } catch (err) {
+    console.error('Erro inesperado em PATCH /api/contacts/[id]:', err)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const idx = contacts.findIndex((c) => c.id === id)
-  if (idx === -1) return NextResponse.json({ error: 'Contato não encontrado' }, { status: 404 })
+  try {
+    const { id } = await params
 
-  contacts.splice(idx, 1)
-  return NextResponse.json({ success: true })
+    const { error } = await db()
+      .from('crm_contacts')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Erro ao deletar contato:', error)
+      return NextResponse.json({ error: 'Erro ao deletar contato' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Erro inesperado em DELETE /api/contacts/[id]:', err)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }

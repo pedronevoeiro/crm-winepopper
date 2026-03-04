@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -15,22 +15,30 @@ import {
 import { arrayMove } from '@dnd-kit/sortable'
 import { KanbanColumn } from './KanbanColumn'
 import { DealCard } from './DealCard'
-import type { CrmPipelineStage, CrmDealWithRelations } from '@/types/database'
+import type { CrmPipelineStage, CrmDealWithRelations, CrmDealPriority } from '@/types/database'
+
+const PRIORITY_ORDER: Record<CrmDealPriority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+}
 
 interface KanbanBoardProps {
   stages: CrmPipelineStage[]
   deals: CrmDealWithRelations[]
   onDealMove: (dealId: string, newStageId: string, newPosition: number) => void
+  sortBy?: 'created_at' | 'value' | 'priority'
 }
 
-export function KanbanBoard({ stages, deals, onDealMove }: KanbanBoardProps) {
+export function KanbanBoard({ stages, deals, onDealMove, sortBy }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [localDeals, setLocalDeals] = useState(deals)
 
-  // Update local deals when props change
-  if (deals !== localDeals && !activeId) {
-    setLocalDeals(deals)
-  }
+  // Sync parent deals into local state only when not dragging
+  useEffect(() => {
+    if (!activeId) setLocalDeals(deals)
+  }, [deals, activeId])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -41,11 +49,31 @@ export function KanbanBoard({ stages, deals, onDealMove }: KanbanBoardProps) {
   const activeDeal = localDeals.find((d) => d.id === activeId)
 
   const getDealsByStage = useCallback(
-    (stageId: string) =>
-      localDeals
-        .filter((d) => d.stage_id === stageId)
-        .sort((a, b) => a.position - b.position),
-    [localDeals]
+    (stageId: string) => {
+      const stageDeals = localDeals.filter((d) => d.stage_id === stageId)
+
+      if (sortBy === 'created_at') {
+        return stageDeals.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+      }
+      if (sortBy === 'value') {
+        return stageDeals.sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+      }
+      if (sortBy === 'priority') {
+        return stageDeals.sort((a, b) => {
+          // Lead Prime sempre primeiro
+          const aIsPrime = a.tags?.includes('lead_prime') ? 0 : 1
+          const bIsPrime = b.tags?.includes('lead_prime') ? 0 : 1
+          if (aIsPrime !== bIsPrime) return aIsPrime - bIsPrime
+          return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+        })
+      }
+
+      // Default: position ascending (current behavior)
+      return stageDeals.sort((a, b) => a.position - b.position)
+    },
+    [localDeals, sortBy]
   )
 
   function handleDragStart(event: DragStartEvent) {
@@ -117,6 +145,9 @@ export function KanbanBoard({ stages, deals, onDealMove }: KanbanBoardProps) {
     onDealMove(activeId, targetStageId, position)
   }
 
+  const activeStages = stages.filter((s) => !s.is_won && !s.is_lost)
+  const closedStages = stages.filter((s) => s.is_won || s.is_lost)
+
   return (
     <DndContext
       sensors={sensors}
@@ -126,31 +157,26 @@ export function KanbanBoard({ stages, deals, onDealMove }: KanbanBoardProps) {
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {stages
-          .filter((s) => !s.is_won && !s.is_lost)
-          .map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              deals={getDealsByStage(stage.id)}
-            />
-          ))}
-      </div>
+        {activeStages.map((stage) => (
+          <KanbanColumn
+            key={stage.id}
+            stage={stage}
+            deals={getDealsByStage(stage.id)}
+          />
+        ))}
 
-      {/* Won/Lost columns in a separate section */}
-      <div className="mt-6 border-t pt-4">
-        <h3 className="mb-3 text-sm font-medium text-muted-foreground">Fechados</h3>
-        <div className="flex gap-4">
-          {stages
-            .filter((s) => s.is_won || s.is_lost)
-            .map((stage) => (
-              <KanbanColumn
-                key={stage.id}
-                stage={stage}
-                deals={getDealsByStage(stage.id)}
-              />
-            ))}
-        </div>
+        {/* Divider before Won/Lost columns */}
+        {closedStages.length > 0 && (
+          <div className="flex-shrink-0 w-px bg-border self-stretch mx-1" />
+        )}
+
+        {closedStages.map((stage) => (
+          <KanbanColumn
+            key={stage.id}
+            stage={stage}
+            deals={getDealsByStage(stage.id)}
+          />
+        ))}
       </div>
 
       <DragOverlay>

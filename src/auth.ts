@@ -78,4 +78,5 @@ const authInstance = isBuildTime ? null : createNextAuth()
 export const handlers = authInstance?.handlers ?? { GET: () => new Response(null, { status: 503 }), POST: () => new Response(null, { status: 503 }) }
 export const signIn = authInstance?.signIn ?? (async () => undefined)
 export const signOut = authInstance?.signOut ?? (async () => undefined)
-export const auth = authInstance?.auth ?? (async () => null)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const auth: any = authInstance?.auth ?? (async () => null)

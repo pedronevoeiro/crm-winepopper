@@ -35,7 +35,7 @@ export default function TarefasPage() {
   async function loadTasks(f?: string) {
     const filterParam = f && f !== 'all' && f !== 'completed' ? `?filter=${f}` : f === 'completed' ? '?status=completed' : ''
     const data = await fetch(`/api/tasks${filterParam}`).then((r) => r.json())
-    setTasks(data)
+    setTasks(Array.isArray(data) ? data : [])
     setLoading(false)
   }
 
