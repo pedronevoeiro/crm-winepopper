@@ -36,7 +36,7 @@ import { Trophy, XCircle, GripVertical, X, Plus, UserPlus, Palette, Copy, Check 
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import type { CrmPipelineStage, CrmUserProfile } from '@/types/database'
+import type { CrmPipelineStage, CrmUserProfile, CrmUserRole } from '@/types/database'
 
 // Predefined color palette for stages
 const COLOR_OPTIONS = [
@@ -438,7 +438,7 @@ export default function ConfiguracoesPage() {
     }
   }
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleRoleChange = async (userId: string, newRole: CrmUserRole) => {
     const res = await fetch(`/api/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
