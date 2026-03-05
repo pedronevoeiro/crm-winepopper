@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { KanbanBoard } from '@/components/pipeline/KanbanBoard'
@@ -20,6 +20,14 @@ import type { CrmPipelineStage, CrmDealWithRelations, CrmUserProfile, CrmFunnel 
 type SortBy = 'created_at' | 'value' | 'priority'
 
 export default function PipelinePage() {
+  return (
+    <Suspense>
+      <PipelineContent />
+    </Suspense>
+  )
+}
+
+function PipelineContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
