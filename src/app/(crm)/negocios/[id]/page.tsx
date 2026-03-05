@@ -892,9 +892,9 @@ function TasksCard({ deal, onRefresh }: { deal: DealDetail; onRefresh: () => Pro
 
 function ProductsCard({ deal, onRefresh }: { deal: DealDetail; onRefresh: () => Promise<void> }) {
   const [showAdd, setShowAdd] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState(PRODUCTS_CATALOG[0].id)
+  const [selectedProduct, setSelectedProduct] = useState<string>(PRODUCTS_CATALOG[0].id)
   const [quantity, setQuantity] = useState(1)
-  const [unitPrice, setUnitPrice] = useState(PRODUCTS_CATALOG[0].price)
+  const [unitPrice, setUnitPrice] = useState<number>(PRODUCTS_CATALOG[0].price)
   const [adding, setAdding] = useState(false)
 
   const totalValue = deal.deal_items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
