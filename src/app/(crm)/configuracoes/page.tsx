@@ -558,7 +558,7 @@ export default function ConfiguracoesPage() {
                   </div>
                   <Select
                     value={user.role}
-                    onValueChange={(val) => handleRoleChange(user.id, val)}
+                    onValueChange={(val) => handleRoleChange(user.id, val as CrmUserRole)}
                   >
                     <SelectTrigger className={`h-7 w-32 text-xs border-0 ${ROLE_COLORS[user.role] ?? 'bg-gray-100 text-gray-800'}`}>
                       <SelectValue />
